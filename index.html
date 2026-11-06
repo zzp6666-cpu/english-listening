@@ -176,7 +176,6 @@
         <option value="1.25" data-page-node-id="DStnxxVzJHqx84WV4aYJBV">1.25×</option>
         <option value="1.5" data-page-node-id="RkxXflYnmVmCw1N575cq7D">1.5×</option>
       </select>
-      <label class="chk" title="默认隐藏英文原文，勾选后才显示"><input type="checkbox" id="showText" /> 显示原文</label>
       <button id="editBtn" class="btn" title="手动增删切片边界、调整每句起止时间">✂ 编辑切片</button>
       <div class="spacer" data-page-node-id="1OyMcp40Lbw9fXgWZQEKvR"></div>
       <div id="count" class="count" data-page-node-id="8uYLgeV2SqoCI2b0OVThAU"></div>
@@ -188,13 +187,12 @@
       <div class="edit-head">
         <span class="et">✂ 手动微调切片</span>
         <span id="editCount" class="count"></span>
-        <label class="chk" style="margin-left:auto" title="默认隐藏英文原文（盲听）；勾选后可显示并编辑每句文字"><input type="checkbox" id="editShowText" /> 显示原文</label>
       </div>
       <div id="editList" class="edit-list"></div>
       <div class="edit-actions">
         <button id="saveSeg" class="btn primary">💾 保存切片</button>
         <button id="cancelSeg" class="btn">取消</button>
-        <span class="tip">用法：播放并定位后点「在播放处切」插入边界，或直接改每句起止时间。默认隐藏原文（盲听）；需改文字请勾选右上「显示原文」。保存后仅存于当前浏览器。</span>
+        <span class="tip">用法：播放并定位后点「在播放处切」插入边界，或直接改每句起止时间。英文原文始终隐藏（盲听）。保存后仅存于当前浏览器。</span>
       </div>
     </div>
 
@@ -221,7 +219,6 @@ const player = $("#player"), listEl = $("#list"), audio = $("#audio");
 const libraryEl = $("#library"), libListEl = $("#libList"), libCountEl = $("#libCount");
 const playPauseBtn = $("#playPause"), prevBtn = $("#prev"), nextBtn = $("#next");
 const autoBtn = $("#auto"), loopBtn = $("#loop"), speedSel = $("#speed"), countEl = $("#count");
-const showTextEl = $("#showText"), editShowTextEl = $("#editShowText");
 const editBtn = $("#editBtn"), editorEl = $("#editor"), editListEl = $("#editList");
 const saveSegBtn = $("#saveSeg"), cancelSegBtn = $("#cancelSeg"), editCountEl = $("#editCount");
 
@@ -229,7 +226,6 @@ let sentences = [];
 let current = -1;
 let autoPlay = true;   // 连续播放（默认开）
 let loopCurrent = false; // 单句循环（默认关）
-let showText = false;  // 显示英文原文（默认隐藏，盲听模式）
 let currentId = null;  // 当前音频在库中的 id
 let currentWords = []; // 词级时间戳（用于拆分时按词归属文字）
 let editing = false;
@@ -273,9 +269,7 @@ function renderList() {
     const row = document.createElement("div");
     row.className = "sent";
     row.dataset.i = i;
-    const txt = showText
-      ? escapeHtml(s.text)
-      : `<span class="masked">第 ${i + 1} 句 · 点击播放（原文已隐藏）</span>`;
+    const txt = `<span class="masked">第 ${i + 1} 句 · 点击播放（原文已隐藏）</span>`;
     row.innerHTML = `<div class="idx">${i + 1}</div>
       <div class="txt">${txt}</div>
       <div class="play">▶</div>`;
@@ -462,17 +456,6 @@ loopBtn.addEventListener("click", () => {
 });
 speedSel.addEventListener("change", () => { audio.playbackRate = parseFloat(speedSel.value); });
 
-// 主列表与编辑切片面板共用同一个「显示原文」状态，两处开关联动
-function setShowText(v) {
-  showText = !!v;
-  showTextEl.checked = showText;
-  editShowTextEl.checked = showText;
-  renderList();
-  if (editing) renderEditor();
-}
-showTextEl.addEventListener("change", () => setShowText(showTextEl.checked));
-editShowTextEl.addEventListener("change", () => setShowText(editShowTextEl.checked));
-
 // ---- 切片编辑器（手动微调） ----
 function fmtClock(sec) {
   if (isNaN(sec) || sec < 0) sec = 0;
@@ -495,7 +478,6 @@ editBtn.addEventListener("click", () => {
   editing = !editing;
   if (editing) {
     editable = sentences.map(s => ({ text: s.text, start: s.start, end: s.end }));
-    editShowTextEl.checked = showText;   // 进入编辑面板时同步开关状态
     renderEditor();
     editorEl.style.display = "block";
     listEl.style.display = "none";
@@ -515,11 +497,8 @@ function renderEditor() {
   editable.forEach((s, i) => {
     const row = document.createElement("div");
     row.className = "edit-row";
-    // 盲听模式下不显示原文（与主列表的「显示原文」开关联动）；
-    // 需要改文字时勾选开关，文字框才会出现。
-    const textRow = showText
-      ? `<textarea class="e-text" rows="1">${escapeHtml(s.text)}</textarea>`
-      : `<div class="e-mask">第 ${i + 1} 段 · 原文已隐藏</div>`;
+    // 盲听模式：原文始终隐藏，只保留起止时间等操作
+    const textRow = `<div class="e-mask">第 ${i + 1} 段 · 原文已隐藏</div>`;
     row.innerHTML = `
       <div class="e-idx">${i + 1}</div>
       <div class="e-body">
